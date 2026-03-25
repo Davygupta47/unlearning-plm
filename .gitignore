@@ -1,7 +1,7 @@
 /llm_unlearn/tokenized_dataset
 /llm_unlearn/output
 /models
-
+.env
 *.sh
 .vscode
 # Byte-compiled / optimized / DLL files
