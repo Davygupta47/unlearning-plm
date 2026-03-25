@@ -1,0 +1,79 @@
+Dataset link: https://huggingface.co/datasets/llmunlearn/unlearn_dataset
+We collect and provide the unlearn_dataset, which serves as a benchmark for evaluating unlearning methodologies in pre-trained large language models across diverse domains, including arXiv, GitHub. Access our unlearn_dataset directly on Hugging Face.
+
+Loading the datasets
+To load the dataset:
+
+from datasets import load_dataset
+dataset = load_dataset("llmunlearn/unlearn_dataset", name="arxiv", split="forget")
+Available configuration names and corresponding splits:
+arxiv: forget, approximate, retain
+github: forget, approximate, retain
+general: evaluation, retain
+
+--------------------------------------------------------------------------------
+Download Yi-6B model
+mkdir models
+cd models
+git lfs install
+git clone https://huggingface.co/01-ai/Yi-6B
+Prepare tokenized datasets
+cd utils
+python save_tokenized_dataset.py --tokenizer_name_or_path ../../models/Yi-6B
+python ascent_plus_descent_tokenizer.py --tokenizer_name_or_path ../../models/Yi-6B
+Unlearning experiments
+Remember to replace <your-wandb-key> in the run_unlearn.py, run_eval.py, and run_mia.py files to your own key.
+
+# Make sure you are under the llm_unlearn dir
+torchrun --nproc_per_node=8 --master_port=20001  run_unlearn.py   \
+    --target_model_name_or_path ../../models/Yi-6B  \
+    --per_device_train_batch_size 1     \
+    --do_unlearn  \
+    --output_dir ./output \
+    --overwrite_output_dir     \
+    --num_train_epochs 1    \
+    --logging_steps 1     \
+    --learning_rate 2e-5     \
+    --warmup_ratio 0.03 \
+    --overwrite_cache \
+    --save_total_limit 1 \
+    --fsdp "full_shard auto_wrap" \
+    --fsdp_transformer_layer_cls_to_wrap 'LlamaDecoderLayer' \
+    --bf16 True \
+    --tf32 True \
+    --weight_decay 0. \
+    --lr_scheduler_type "cosine" \
+    --domain github \
+    --gradient_accumulation_steps 85 \
+    --unlearn_method gradient_ascent 
+Available domains with corresponding arguments: :
+--domain arxiv  --gradient_accumulation_steps 60 
+--domain github --gradient_accumulation_steps 85 
+Available methods with corresponding arguments:
+--unlearn_method gradient_ascent 
+--unlearn_method random_label --completely_random True (named Fine-tuning with Random Labels in the paper)
+--unlearn_method random_label  --top_k 1  --rm_groundtruth True  (named Unlearning with Adversarial Samples in the paper)
+--unlearn_method ascent_plus_descent
+--unlearn_method ascent_plus_kl_divergence
+--unlearn_method ascent_plus_descent --general True
+--unlearn_method ascent_plus_kl_divergence --general True
+Eval unlearned model
+torchrun --nproc_per_node=8 --master_port=20001 run_eval.py \
+    --model_name_or_path ./output/github/Yi-6B/8_gpu_bs_1_gas_85_lr_2.0e_5_epoch1/unlearn/gradient_ascent \
+    --per_device_eval_batch_size 1 \
+    --do_eval \
+    --output_dir ./output/github/Yi-6B-eval \
+    --overwrite_output_dir \
+    --overwrite_cache \
+    --tf32 True \
+    --domain github
+Membership inference attack
+torchrun --nproc_per_node=8 --master_port=20001 run_mia.py \
+        --model_name_or_path ./output/github/Yi-6B/8_gpu_bs_1_gas_85_lr_2.0e_5_epoch1general/unlearn/ascent_plus_kl_divergence \
+        --per_device_eval_batch_size 1 \
+        --do_eval \
+        --output_dir ./output/arxiv/Yi-6B-mia \
+        --overwrite_output_dir \
+        --overwrite_cache \
+        --tf32 True \
+        --domain github
