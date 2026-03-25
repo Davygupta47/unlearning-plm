@@ -1,12 +1,12 @@
 # from setuptools import setup, find_packages
 
 # setup(
-#     name="unlearning-plm",
+#     name="llm_unlearn",
 #     version="0.1.0",
 #     packages=[
-#         "unlearning-plm",
-#         "unlearning-plm.methods",
-#         "unlearning-plm.utils",
+#         "llm_unlearn",
+#         "llm_unlearn.methods",
+#         "llm_unlearn.utils",
 #     ],
      # packages=find_packages(),
 # )
