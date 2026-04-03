@@ -1,5 +1,4 @@
-apex
-datasets==2.17.1
+datasets
 evaluate
 matplotlib
 numpy
@@ -8,5 +7,5 @@ scikit_learn
 setuptools
 torch
 tqdm
-transformers==4.36.0
+transformers
 wandb
