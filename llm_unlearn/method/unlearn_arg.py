@@ -1,6 +1,7 @@
 import os
 import token
 import transformers
+def is_torch_tpu_available(): return False
 from transformers import (
     CONFIG_MAPPING,
     MODEL_FOR_CAUSAL_LM_MAPPING,
@@ -11,7 +12,6 @@ from transformers import (
     Trainer,
     TrainingArguments,
     default_data_collator,
-    is_torch_tpu_available,
     set_seed,
 )
 from transformers.utils import logging

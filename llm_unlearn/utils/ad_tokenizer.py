@@ -1,7 +1,7 @@
 #Ascent and descent tokenizer here!!
 import json
-from llm_unlearn.utils import adapter_load_dataset
-from llm_unlearn.utils import tokenize
+from .saved_dataset import adapter_load_dataset
+from .chunk_tokenizer import tokenize
 import transformers
 from transformers import AutoTokenizer
 from torch.utils.data import Dataset

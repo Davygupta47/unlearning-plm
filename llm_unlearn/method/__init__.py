@@ -1,4 +1,4 @@
-from .unlearning_argument import UnlearningArguments
+from .unlearn_arg import UnlearningArguments
 from .gradient_ascent import GradientAscentTrainer
-from .ascent_plus_descent import AscentPlusDescentDataCollator, AscentPlusDescentTrainer
-from .ascent_plus_KLdivergence import AscentPlusKLDivergenceTrainer
+from .ad import AscentPlusDescentDataCollator, AscentPlusDescentTrainer
+from .akl import AscentPlusKLDivergenceTrainer

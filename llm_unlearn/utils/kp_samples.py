@@ -1,7 +1,7 @@
 import torch
 from transformers import GPT2Tokenizer, GPT2LMHeadModel, AutoModelForCausalLM
 from torch.nn.functional import softmax
-from llm_unlearn.utils import smart_tokenizer_and_embedding_resize
+from .tokenizer_resize import smart_tokenizer_and_embedding_resize
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

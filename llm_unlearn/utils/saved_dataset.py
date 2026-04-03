@@ -1,5 +1,5 @@
 #Saved tokenized dataset here!!
-from llm_unlearn.utils import tokenize
+from .chunk_tokenizer import tokenize
 import torch
 from transformers import set_seed, AutoTokenizer
 from datasets import load_from_disk, DatasetDict, concatenate_datasets, load_dataset

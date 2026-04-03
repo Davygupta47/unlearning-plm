@@ -12,6 +12,7 @@ import math
 import os
 import sys
 import warnings
+import json
 from dataclasses import dataclass, field
 from itertools import chain
 from typing import Optional
@@ -23,7 +24,15 @@ import evaluate
 import torch
 from datasets import load_dataset, load_from_disk, concatenate_datasets, DatasetDict
 
+
+try:
+    from transformers import is_torch_tpu_available
+except ImportError:
+    def is_torch_tpu_available():
+        return False
 import transformers
+
+def is_torch_tpu_available(): return False
 from transformers import (
     CONFIG_MAPPING,
     MODEL_FOR_CAUSAL_LM_MAPPING,
@@ -34,16 +43,16 @@ from transformers import (
     Trainer,
     TrainingArguments,
     default_data_collator,
-    is_torch_tpu_available,
+    
     set_seed,
 )
 from transformers.testing_utils import CaptureLogger
 from transformers.trainer_utils import get_last_checkpoint
-from transformers.utils import check_min_version, send_example_telemetry
+from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
 import time
 
-from llm_unlearn.methods import (
+from llm_unlearn.method import (
     GradientAscentTrainer,
     UnlearningArguments,
     AscentPlusKLDivergenceTrainer,
@@ -72,7 +81,7 @@ require_version(
 )
 
 logger = logging.getLogger(__name__)
-wandb.login(key="<your-wandb-key>")
+wandb.login(key="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")
 wandb.init(project="LLMUnlearn")
 
 MODEL_CONFIG_CLASSES = list(MODEL_FOR_CAUSAL_LM_MAPPING.keys())
@@ -280,15 +289,39 @@ class DataTrainingArguments:
     )
 
 def main():
+    # `--tf32` is a convenience flag in HF TrainingArguments. It hard-fails on
+    # pre-Ampere GPUs (e.g., T4) and on CPU-only runtimes.
+    def _supports_tf32() -> bool:
+        if not torch.cuda.is_available():
+            return False
+        major, _minor = torch.cuda.get_device_capability(0)
+        return major >= 8
+
+    if not _supports_tf32():
+        sys.argv = [a for a in sys.argv if a != "--tf32" and not a.startswith("--tf32=")]
+
     parser = HfArgumentParser(
         (ModelArguments, DataTrainingArguments, UnlearningArguments)
     )
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
-        model_args, data_args, training_args = parser.parse_json_file(
-            json_file=os.path.abspath(sys.argv[1])
-        )
+        json_path = os.path.abspath(sys.argv[1])
+        if not _supports_tf32():
+            with open(json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if data.get("tf32") is True:
+                data["tf32"] = False
+            if hasattr(parser, "parse_dict"):
+                model_args, data_args, training_args = parser.parse_dict(data)
+            else:
+                tmp_path = json_path + ".notf32.tmp"
+                with open(tmp_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f)
+                model_args, data_args, training_args = parser.parse_json_file(json_file=tmp_path)
+                os.remove(tmp_path)
+        else:
+            model_args, data_args, training_args = parser.parse_json_file(json_file=json_path)
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 

@@ -2,7 +2,7 @@
 import copy
 import numpy as np
 import torch
-from llm_unlearn.utils import compute_logits_and_samples_for_batch
+from .kp_samples import compute_logits_and_samples_for_batch
 from transformers import BatchEncoding
 from datasets import Dataset, DatasetDict
 from tqdm import trange

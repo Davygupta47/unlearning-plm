@@ -10,7 +10,8 @@ from typing import Dict
 
 import copy
 from torch.nn import DataParallel
-from llm_unlearn.utils import smart_tokenizer_and_embedding_resize
+
+from .tokenizer_resize import smart_tokenizer_and_embedding_resize
 
 
 def preprocess_logits_for_metrics(logits, labels):

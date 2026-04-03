@@ -10,6 +10,7 @@ import math
 import os
 import sys
 import warnings
+import json
 from dataclasses import dataclass, field
 from itertools import chain
 from typing import Optional
@@ -302,15 +303,37 @@ def main():
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
+    def _supports_tf32() -> bool:
+        if not torch.cuda.is_available():
+            return False
+        major, _minor = torch.cuda.get_device_capability(0)
+        return major >= 8
+
+    if not _supports_tf32():
+        sys.argv = [a for a in sys.argv if a != "--tf32" and not a.startswith("--tf32=")]
+
     parser = HfArgumentParser(
         (ModelArguments, DataTrainingArguments, TrainingArguments)
     )
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
-        model_args, data_args, training_args = parser.parse_json_file(
-            json_file=os.path.abspath(sys.argv[1])
-        )
+        json_path = os.path.abspath(sys.argv[1])
+        if not _supports_tf32():
+            with open(json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if data.get("tf32") is True:
+                data["tf32"] = False
+            if hasattr(parser, "parse_dict"):
+                model_args, data_args, training_args = parser.parse_dict(data)
+            else:
+                tmp_path = json_path + ".notf32.tmp"
+                with open(tmp_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f)
+                model_args, data_args, training_args = parser.parse_json_file(json_file=tmp_path)
+                os.remove(tmp_path)
+        else:
+            model_args, data_args, training_args = parser.parse_json_file(json_file=json_path)
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     wandb.run.name = "eval-" + model_args.model_name_or_path.replace(
