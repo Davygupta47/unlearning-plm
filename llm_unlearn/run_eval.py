@@ -66,7 +66,7 @@ require_version(
 )
 
 logger = logging.getLogger(__name__)
-wandb.login(key="<your-wandb-key>")
+wandb.login(key="wandb_api_key")
 wandb.init(project="LLMUnlearn")
 
 MODEL_CONFIG_CLASSES = list(MODEL_FOR_CAUSAL_LM_MAPPING.keys())
