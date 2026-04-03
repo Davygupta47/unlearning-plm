@@ -323,7 +323,41 @@ def main():
         else:
             model_args, data_args, training_args = parser.parse_json_file(json_file=json_path)
     else:
-        model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+        parsed = parser.parse_args_into_dataclasses(return_remaining_strings=True)
+        model_args, data_args, training_args, remaining_args = parsed
+
+        # Some environments / Transformers versions may not expose all CLI flags.
+        # Apply a small set of common flags manually instead of hard-failing.
+        if remaining_args:
+            if "--overwrite_output_dir" in remaining_args:
+                remaining_args = [a for a in remaining_args if a != "--overwrite_output_dir"]
+                try:
+                    training_args.overwrite_output_dir = True
+                except Exception:
+                    setattr(training_args, "overwrite_output_dir", True)
+
+            if "--fsdp_transformer_layer_cls_to_wrap" in remaining_args:
+                idx = remaining_args.index("--fsdp_transformer_layer_cls_to_wrap")
+                value = None
+                if idx + 1 < len(remaining_args):
+                    value = remaining_args[idx + 1]
+                    del remaining_args[idx : idx + 2]
+                else:
+                    del remaining_args[idx]
+                if value is not None:
+                    try:
+                        training_args.fsdp_transformer_layer_cls_to_wrap = value
+                    except Exception:
+                        setattr(training_args, "fsdp_transformer_layer_cls_to_wrap", value)
+
+            # Some commands mistakenly leave a bare boolean token (e.g. trailing `True`).
+            if remaining_args == ["True"] or remaining_args == ["False"]:
+                remaining_args = []
+
+            if remaining_args:
+                raise ValueError(
+                    f"Some specified arguments are not used by the HfArgumentParser: {remaining_args}"
+                )
 
     # Set seed before initializing model.
     set_seed(training_args.seed)
