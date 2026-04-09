@@ -505,7 +505,7 @@ def main():
             unlearner = Trainer(
                 model=model,
                 train_dataset=train_dataset,
-                tokenizer=tokenizer,
+                #tokenizer=tokenizer
                 **Trainer_args,
             )
         elif training_args.unlearn_method == "finetune":
