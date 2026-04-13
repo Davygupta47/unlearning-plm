@@ -1,6 +1,6 @@
 {
-  "model_name_or_path": "/kaggle/working/output/movielens/Yi-6B/unlearn/gradient_ascent",
-  "output_dir": "/kaggle/working/output/movielens/Yi-6B-mia",
+  "model_name_or_path": "/kaggle/working/output/movielens/Qwen2-1.5B/unlearn/gradient_ascent",
+  "output_dir": "/kaggle/working/output/movielens/Qwen2-1.5B-mia",
   "do_eval": true,
   "domain": "movielens",
   "per_device_eval_batch_size": 1,

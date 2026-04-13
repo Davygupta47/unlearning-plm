@@ -1,11 +1,11 @@
 # =============================================================================
-# LLM Unlearning on Kaggle Free Tier – Yi-6B + MovieLens Data
+# LLM Unlearning on Kaggle Free Tier – Qwen2-1.5B + MovieLens Data
 # =============================================================================
 # Run this notebook cell-by-cell in Kaggle (T4 GPU, 58 GB RAM).
 # No wandb key needed. No 8-GPU cluster needed.
 # Steps:
 #   1. Clone repo & install dependencies
-#   2. Download Yi-6B model weights from HuggingFace
+#   2. Download Qwen2-1.5B model weights from HuggingFace
 #   3. Prepare MovieLens tokenized datasets
 #   4. Run unlearning  (gradient_ascent method)
 #   5. Run evaluation  (perplexity on forget/general sets)
@@ -73,15 +73,15 @@ print(f"Working directory: {os.getcwd()}")
 sh("pip install -q -e .")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CELL 4 — Download Yi-6B Model from HuggingFace Hub
+# CELL 4 — Download Qwen2-1.5B Model from HuggingFace Hub
 # ─────────────────────────────────────────────────────────────────────────────
-# NOTE: Yi-6B is ~12 GB. This takes ~10–15 minutes on Kaggle.
+# NOTE: Qwen2-1.5B is ~3 GB. This takes ~5-10 minutes on Kaggle.
 # We use snapshot_download which handles sharded safetensors correctly.
 
 from huggingface_hub import snapshot_download
 
-MODEL_ID   = "01-ai/Yi-6B"
-MODEL_DIR  = f"{WORKDIR}/models/Yi-6B"
+MODEL_ID   = "Qwen/Qwen2-1.5B"
+MODEL_DIR  = f"{WORKDIR}/models/Qwen2-1.5B"
 
 if not os.path.exists(os.path.join(MODEL_DIR, "tokenizer.json")):
     print(f"Downloading {MODEL_ID} to {MODEL_DIR} ...")
@@ -146,16 +146,16 @@ if torch.cuda.is_available():
 # ── Unlearn config
 patch_json(UNLEARN_CFG, {
     "target_model_name_or_path": MODEL_DIR,
-    "output_dir": f"{WORKDIR}/output/movielens/Yi-6B/unlearn/gradient_ascent",
+    "output_dir": f"{WORKDIR}/output/movielens/Qwen2-1.5B/unlearn/gradient_ascent",
     "bf16": USE_BF16,
     "fp16": USE_FP16,
 })
 
 # ── Eval config (points to output of unlearning)
-UNLEARNED_MODEL_DIR = f"{WORKDIR}/output/movielens/Yi-6B/unlearn/gradient_ascent"
+UNLEARNED_MODEL_DIR = f"{WORKDIR}/output/movielens/Qwen2-1.5B/unlearn/gradient_ascent"
 patch_json(EVAL_CFG, {
     "model_name_or_path": UNLEARNED_MODEL_DIR,
-    "output_dir": f"{WORKDIR}/output/movielens/Yi-6B-eval",
+    "output_dir": f"{WORKDIR}/output/movielens/Qwen2-1.5B-eval",
     "bf16": USE_BF16,
     "fp16": USE_FP16,
 })
@@ -163,7 +163,7 @@ patch_json(EVAL_CFG, {
 # ── MIA config
 patch_json(MIA_CFG, {
     "model_name_or_path": UNLEARNED_MODEL_DIR,
-    "output_dir": f"{WORKDIR}/output/movielens/Yi-6B-mia",
+    "output_dir": f"{WORKDIR}/output/movielens/Qwen2-1.5B-mia",
     "bf16": USE_BF16,
     "fp16": USE_FP16,
 })
@@ -185,7 +185,7 @@ os.environ["WANDB_SILENT"] = "true"
 
 sh(f"python llm_unlearn/run_unlearn.py {UNLEARN_CFG}")
 
-sh(f"ls -lh {WORKDIR}/output/movielens/Yi-6B/unlearn/gradient_ascent/")
+sh(f"ls -lh {WORKDIR}/output/movielens/Qwen2-1.5B/unlearn/gradient_ascent/")
 print("✅ Unlearning complete.")
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -199,8 +199,8 @@ os.chdir(REPO_DIR)
 sh(f"python llm_unlearn/run_eval.py {EVAL_CFG}")
 
 print("\n📄 Eval results:")
-sh(f"cat {WORKDIR}/output/movielens/Yi-6B-eval/forget_eval_results.json 2>/dev/null || echo ''")
-sh(f"cat {WORKDIR}/output/movielens/Yi-6B-eval/general_eval_results.json 2>/dev/null || echo ''")
+sh(f"cat {WORKDIR}/output/movielens/Qwen2-1.5B-eval/forget_eval_results.json 2>/dev/null || echo ''")
+sh(f"cat {WORKDIR}/output/movielens/Qwen2-1.5B-eval/general_eval_results.json 2>/dev/null || echo ''")
 print("✅ Evaluation complete.")
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -213,8 +213,8 @@ os.chdir(REPO_DIR)
 
 sh(f"python llm_unlearn/run_mia.py {MIA_CFG}")
 
-MIA_AUC_FILE = f"{WORKDIR}/output/movielens/Yi-6B-mia/auc.txt"
-MIA_AUC_IMG  = f"{WORKDIR}/output/movielens/Yi-6B-mia/auc.png"
+MIA_AUC_FILE = f"{WORKDIR}/output/movielens/Qwen2-1.5B-mia/auc.txt"
+MIA_AUC_IMG  = f"{WORKDIR}/output/movielens/Qwen2-1.5B-mia/auc.png"
 
 print("\n📊 MIA Results:")
 sh(f"cat {MIA_AUC_FILE} 2>/dev/null || echo 'auc.txt not found'")
@@ -237,16 +237,16 @@ print("""
 ╔══════════════════════════════════════════════════════════╗
 ║         LLM Unlearning Pipeline Summary                  ║
 ╠══════════════════════════════════════════════════════════╣
-║ Model    : Yi-6B (01-ai/Yi-6B)                           ║
+║ Model    : Qwen2-1.5B (Qwen/Qwen2-1.5B)                  ║
 ║ Method   : Gradient Ascent                               ║
 ║ Domain   : MovieLens (user rating sentences)             ║
 ║ Platform : Kaggle Free Tier (T4 GPU, 58 GB RAM)          ║
 ╠══════════════════════════════════════════════════════════╣
 ║ Outputs                                                  ║
-║   Unlearned model : output/movielens/Yi-6B/unlearn/...   ║
-║   Eval results   : output/movielens/Yi-6B-eval/          ║
-║   MIA results    : output/movielens/Yi-6B-mia/auc.txt    ║
-║   ROC curve      : output/movielens/Yi-6B-mia/auc.png    ║
+║   Unlearned model : output/movielens/Qwen2-1.5B/unlearn/...   ║
+║   Eval results   : output/movielens/Qwen2-1.5B-eval/          ║
+║   MIA results    : output/movielens/Qwen2-1.5B-mia/auc.txt    ║
+║   ROC curve      : output/movielens/Qwen2-1.5B-mia/auc.png    ║
 ╠══════════════════════════════════════════════════════════╣
 ║ Interpretation                                           ║
 ║   MIA AUC ~ 0.5 → Unlearning SUCCESSFUL (no leak)       ║
