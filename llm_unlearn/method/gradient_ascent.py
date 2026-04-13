@@ -9,23 +9,18 @@ if is_apex_available():
     from apex import amp
 
 class GradientAscentTrainer(Trainer):
-    def training_step(
-        self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]
-    ) -> torch.Tensor:
-        model.train()
-        inputs = self._prepare_inputs(inputs)
-        with self.compute_loss_context_manager():
-            loss = self.compute_loss(model, inputs)
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        """
+        Computes the negative of the mean loss for gradient ascent.
+        Compatible with newer Transformers versions.
+        """
+        outputs = model(**inputs)
 
-        loss = -loss
+        # Get loss tensor
+        loss_tensor = outputs["loss"] if isinstance(outputs, dict) and "loss" in outputs else outputs[0]
 
-        if self.args.n_gpu > 1:
-            loss = loss.mean()  # mean() to average on multi-gpu parallel training
+        # Mean over batch
+        loss = loss_tensor.mean()
 
-        if self.use_apex:
-            with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                scaled_loss.backward()
-        else:
-            self.accelerator.backward(loss)
-
-        return loss.detach() / self.args.gradient_accumulation_steps
+        # Gradient ascent → maximize loss
+        return (-loss, outputs) if return_outputs else -loss
