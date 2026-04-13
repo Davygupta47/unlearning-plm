@@ -67,9 +67,38 @@ from llm_unlearn.utils import (
     load_model_and_tokenizer,
     AdvSupervisedDataset,
 )
-import wandb
 import random
 import copy
+
+# --------------------------------------------------------------------------
+# Optional wandb: works offline (or with no key) without crashing.
+# --------------------------------------------------------------------------
+try:
+    import wandb as _wandb_module
+    _WANDB_KEY = os.environ.get("WANDB_API_KEY", "").strip()
+    if _WANDB_KEY:
+        _wandb_module.login(key=_WANDB_KEY)
+    else:
+        # Run fully offline so no network calls are made
+        os.environ.setdefault("WANDB_MODE", "offline")
+        _wandb_module.login(anonymous="allow")
+    import wandb
+    wandb.init(project="LLMUnlearn")
+    _WANDB_OK = True
+except Exception as _wandb_exc:
+    print(f"[wandb] Disabled: {_wandb_exc}")
+    _WANDB_OK = False
+    # Provide a no-op shim so the rest of the code does not crash
+    class _WandbShim:
+        class run:
+            name = ""
+        @staticmethod
+        def log(*a, **kw): pass
+        @staticmethod
+        def login(*a, **kw): pass
+        @staticmethod
+        def init(*a, **kw): pass
+    wandb = _WandbShim()
 
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
@@ -81,8 +110,6 @@ require_version(
 )
 
 logger = logging.getLogger(__name__)
-wandb.login(key="wandb_api_key")
-wandb.init(project="LLMUnlearn")
 
 MODEL_CONFIG_CLASSES = list(MODEL_FOR_CAUSAL_LM_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
@@ -492,12 +519,17 @@ def main():
             domain_dir = "arxiv/arxiv_forget_500"
         elif training_args.domain == "github":
             domain_dir = "github/github_forget_2k"
+        elif training_args.domain == "movielens":
+            domain_dir = "movielens/movielens_forget_500"
         else:
-            raise ValueError(f"Invalid domain: {training_args.domain}. Supported domains are 'arxiv' and 'github'.")
+            raise ValueError(
+                f"Invalid domain: {training_args.domain}. "
+                "Supported domains are 'arxiv', 'github', 'movielens'."
+            )
         if training_args.unlearn_method == "retrain":
             model, tokenizer = load_model_and_tokenizer(pretrained_model_name_or_path)
             train_dataset = torch.load(
-                "<retain-dataset-path>"
+                "<retain-dataset-path>", weights_only=False
             )
             if data_args.max_train_samples is not None:
                 max_train_samples = min(len(train_dataset), data_args.max_train_samples)
@@ -557,11 +589,14 @@ def main():
             )
         elif training_args.unlearn_method == "gradient_ascent":
             model, tokenizer = load_model_and_tokenizer(finetuned_model_name_or_path)
-            train_dataset = torch.load(os.path.join(
-                "./tokenized_dataset",
-                domain_dir,
-                "normal/tokenized_dataset.pt"
-            ))
+            train_dataset = torch.load(
+                os.path.join(
+                    "./tokenized_dataset",
+                    domain_dir,
+                    "normal/tokenized_dataset.pt",
+                ),
+                weights_only=False,  # PyTorch >= 2.0 compat
+            )
             if data_args.max_train_samples is not None:
                 max_train_samples = min(len(train_dataset), data_args.max_train_samples)
                 train_dataset = train_dataset.select(range(max_train_samples))

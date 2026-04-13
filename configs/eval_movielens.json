@@ -1,0 +1,11 @@
+{
+  "model_name_or_path": "/kaggle/working/output/movielens/Yi-6B/unlearn/gradient_ascent",
+  "output_dir": "/kaggle/working/output/movielens/Yi-6B-eval",
+  "do_eval": true,
+  "domain": "movielens",
+  "per_device_eval_batch_size": 1,
+  "fp16": true,
+  "bf16": false,
+  "dataloader_num_workers": 0,
+  "report_to": "none"
+}

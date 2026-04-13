@@ -1,0 +1,22 @@
+{
+  "target_model_name_or_path": "/kaggle/working/models/Yi-6B",
+  "output_dir": "/kaggle/working/output/movielens/Yi-6B",
+  "do_unlearn": true,
+  "unlearn_method": "gradient_ascent",
+  "domain": "movielens",
+  "num_train_epochs": 1,
+  "per_device_train_batch_size": 1,
+  "gradient_accumulation_steps": 16,
+  "gradient_checkpointing": true,
+  "learning_rate": 2e-5,
+  "lr_scheduler_type": "cosine",
+  "warmup_ratio": 0.03,
+  "fp16": true,
+  "bf16": false,
+  "save_total_limit": 1,
+  "logging_steps": 5,
+  "save_steps": 500,
+  "dataloader_num_workers": 0,
+  "remove_unused_columns": false,
+  "report_to": "none"
+}

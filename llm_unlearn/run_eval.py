@@ -31,15 +31,20 @@ from transformers import (
     Trainer,
     TrainingArguments,
     default_data_collator,
-    is_torch_tpu_available,
     set_seed,
 )
+
+# is_torch_tpu_available was removed in newer transformers
+try:
+    from transformers import is_torch_tpu_available
+except ImportError:
+    def is_torch_tpu_available(): return False
+
 from transformers.testing_utils import CaptureLogger
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 
-import wandb
 import copy
 import builtins
 from typing import Any, Dict
@@ -66,8 +71,34 @@ require_version(
 )
 
 logger = logging.getLogger(__name__)
-wandb.login(key="wandb_api_key")
-wandb.init(project="LLMUnlearn")
+
+# --------------------------------------------------------------------------
+# Optional wandb
+# --------------------------------------------------------------------------
+try:
+    import wandb as _wandb_module
+    _WANDB_KEY = os.environ.get("WANDB_API_KEY", "").strip()
+    if _WANDB_KEY:
+        _wandb_module.login(key=_WANDB_KEY)
+    else:
+        os.environ.setdefault("WANDB_MODE", "offline")
+        _wandb_module.login(anonymous="allow")
+    import wandb
+    wandb.init(project="LLMUnlearn")
+    _WANDB_OK = True
+except Exception as _wandb_exc:
+    print(f"[wandb] Disabled: {_wandb_exc}")
+    _WANDB_OK = False
+    class _WandbShim:
+        class run:
+            name = ""
+        @staticmethod
+        def log(*a, **kw): pass
+        @staticmethod
+        def login(*a, **kw): pass
+        @staticmethod
+        def init(*a, **kw): pass
+    wandb = _WandbShim()
 
 MODEL_CONFIG_CLASSES = list(MODEL_FOR_CAUSAL_LM_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
@@ -483,17 +514,28 @@ def main():
 
     if data_args.domain == "arxiv":
         forget_dataset = torch.load(
-            "./tokenized_dataset/arxiv/arxiv_forget_500/normal/tokenized_dataset.pt"
+            "./tokenized_dataset/arxiv/arxiv_forget_500/normal/tokenized_dataset.pt",
+            weights_only=False,
         )
     elif data_args.domain == "github":
         forget_dataset = torch.load(
-            "./tokenized_dataset/github/github_forget_2k/normal/tokenized_dataset.pt"
+            "./tokenized_dataset/github/github_forget_2k/normal/tokenized_dataset.pt",
+            weights_only=False,
+        )
+    elif data_args.domain == "movielens":
+        forget_dataset = torch.load(
+            "./tokenized_dataset/movielens/movielens_forget_500/normal/tokenized_dataset.pt",
+            weights_only=False,
         )
     else:
-        raise ValueError(f"Invalid domain: {data_args.domain}. Supported domains are 'arxiv' and 'github'.")
-    general_dataset = torch.load(
-            "./tokenized_dataset/general/general_1k/normal/tokenized_dataset.pt"
+        raise ValueError(
+            f"Invalid domain: {data_args.domain}. "
+            "Supported domains are 'arxiv', 'github', 'movielens'."
         )
+    general_dataset = torch.load(
+        "./tokenized_dataset/general/general_1k/normal/tokenized_dataset.pt",
+        weights_only=False,
+    )
     dataset_dict = {
         "forget": forget_dataset,
         "general": general_dataset,
